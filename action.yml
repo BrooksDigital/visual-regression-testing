@@ -1,0 +1,87 @@
+name: 'Run VRT'
+description: 'Use Backstop JS to compare two sets of URLs and upload the results.'
+
+inputs:
+  test-id:
+    description: 'The test ID'
+  backstop-test-file:
+    description: 'The relative path to the YAML file containing backstop test config'
+    default: 'tests/vrt.yaml'
+  local-backstop-directory:
+    description: 'The relative path to a local backstop installation if there is one'
+  test-url:
+    description: 'Base URL for the site under test'
+  reference-url:
+    description: 'Base URL for the reference site being compared against'
+  vrt-domain:
+    description: 'VRT domain to upload the report to'
+    required: true
+  surge-token:
+    description: 'The Surge token for uploading the report'
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Create the cache key
+      id: cache-key
+      env:
+        cache-name: backstop-action
+      run: |
+        echo "key=${{ runner.os }}-build-${{ env.cache-name }}-$(sha256sum '${{ github.action_path }}/package-lock.json')" >> $GITHUB_OUTPUT
+        echo "cache-name=${{ env.cache-name }}" >> $GITHUB_OUTPUT
+      shell: bash
+    # See https://docs.github.com/en/actions/using-workflows/caching-dependencies-to-speed-up-workflows#example-using-the-cache-action
+    - name: Cache node modules
+      id: cache-restore
+      uses: actions/cache/restore@v3
+      with:
+        # npm cache files are stored in `~/.npm` on Linux/macOS
+        path: ~/.npm
+        key: ${{ steps.cache-key.outputs.key }}
+        # The path is implicitly part of the key, so there's no risk of
+        # pollution with non-npm caches.
+        restore-keys: |
+          ${{ runner.os }}-build-${{ steps.cache-key.outputs.cache-name }}-
+          ${{ runner.os }}-build-
+    - run: echo "BACKSTOP_TEST_URL=${{ inputs.test-url }}" >> "$GITHUB_ENV"
+      if: ${{ inputs.test-url != '' }}
+      shell: bash
+    - run: echo "BACKSTOP_REFERENCE_URL=${{ inputs.reference-url }}" >> "$GITHUB_ENV"
+      if: ${{ inputs.reference-url != '' }}
+      shell: bash
+    - run: echo "BACKSTOP_TEST_ID=${{ inputs.test-id }}" >> "$GITHUB_ENV"
+      if: ${{ inputs.test-id != '' }}
+      shell: bash
+      # If we're running the action from within the action directory (ie it's
+      # not embedded in the project) then make BACKSTOP_TEST_FILE an absolute
+      #  URL so it will still work.
+    - run: echo "BACKSTOP_TEST_FILE=${{ github.workspace }}/${{ inputs.backstop-test-file }}" >> "$GITHUB_ENV"
+      if: ${{ inputs.local-backstop-directory == '' }}
+      shell: bash
+    - name: Install BackstopJS.
+      run: npm ci
+      shell: bash
+      working-directory: ${{ inputs.local-backstop-directory || github.action_path }}
+      # Explicitly save the cache; it's still valid even if the job fails due to
+      # failed screenshot comparisons.
+    - uses: actions/cache/save@v3
+      if: ${{ steps.cache-restore.outputs.cache-hit != 'true' }}
+      with:
+        path: ~/.npm
+        key: ${{ steps.cache-key.outputs.key }}
+    - name: Create reference screenshots from source site.
+      run: npx backstop --config backstop.js reference
+      shell: bash
+      working-directory: ${{ inputs.local-backstop-directory || github.action_path }}
+    - name: Create screenshots from the site under test and compare.
+      run: npx backstop --config backstop.js test
+      shell: bash
+      working-directory: ${{ inputs.local-backstop-directory || github.action_path }}
+    - name: Upload the HTML report to Surge.sh.
+      if: always()
+      run: |
+        npm install -g surge &&
+        surge . ${{ inputs.vrt-domain }} --token ${{ inputs.surge-token }} >> $GITHUB_STEP_SUMMARY
+      shell: bash
+      working-directory: ${{ inputs.local-backstop-directory || github.action_path }}/backstop_data
