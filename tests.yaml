@@ -1,0 +1,28 @@
+# ID is used for screenshot naming.
+id: my-project
+
+base_urls:
+  # The URL to compare against.
+  reference: https://www.example.com
+
+#defaults:
+#  scenario:
+#    delay: 500
+#    custom:
+#      autoScroll: true
+
+scenarios:
+  # For additional properties see https://github.com/garris/BackstopJS#advanced-scenarios
+  # 'path' is a custom key that gets converted to url and referenceUrl by backstop.js
+  - path: /
+    label: Homepage
+
+# This is for all scenarios; you can also add viewports just to specific
+# scenarios.
+viewports:
+  - label: phone
+    width: 320
+    height: 480
+  - label: tablet
+    width: 1024
+    height: 768
