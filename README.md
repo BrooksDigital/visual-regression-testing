@@ -23,13 +23,15 @@
            with:
              vrt-domain: https://domain.surge.sh
              surge-token: ${{ secrets.SURGE_TOKEN }}
-             test-id: backstop-action-test-${{ github.run_number }}-${{ github.run_attempt }}
+             test-id: my-project-${{ github.run_number }}-${{ github.run_attempt }}
              test-url: ${{ vars.BACKSTOP_TEST_URL }}
    ```
-3. Choose a suitable domain name for Surge and update the `vrt-domain` line. You can use any string that hasn't been
-   taken, followed by `.surge.sh`, eg. `https://vrt-my-project.surge.sh/`.
-3. [Add the `BACKSTOP_TEST_URL` variable and `SURGE_TOKEN` secret to the repo][0].
-4. Trigger the test by going to the *Actions* tab of the repo and selecting the `name` from your workflow file.
+3. Finalize the workflow file:
+   1. Update `test-id` to start with an appropriate name for the project.
+   2. Choose a suitable domain name for Surge and update the `vrt-domain` line. You can use any string that hasn't been
+      taken, followed by `.surge.sh`, eg. `https://vrt-my-project.surge.sh/`.
+4. [Add the `BACKSTOP_TEST_URL` variable and `SURGE_TOKEN` secret to the repo][0].
+5. Trigger the test by going to the *Actions* tab of the repo and selecting the `name` from your workflow file.
 
 ## Installing into the codebase
 
