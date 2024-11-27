@@ -78,8 +78,9 @@ runs:
       run: npx backstop --config backstop.js test
       shell: bash
       working-directory: ${{ inputs.local-backstop-directory || github.action_path }}
+      if: '!cancelled()'
     - name: Upload the HTML report to Surge.sh.
-      if: always()
+      if: '!cancelled()'
       run: |
         npm install -g surge &&
         surge . ${{ inputs.vrt-domain }} --token ${{ inputs.surge-token }} >> $GITHUB_STEP_SUMMARY
